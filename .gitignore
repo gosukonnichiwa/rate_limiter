@@ -1,0 +1,13 @@
+# Go
+bin/
+pkg/
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+
+# Docker
+docker-compose.override.yml
