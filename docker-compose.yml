@@ -1,0 +1,62 @@
+version: '3'
+services:
+  redis-exporter:
+    image: oliver006/redis_exporter
+    ports:
+      - "9121:9121"
+    command:
+      - "--redis.addr=redis://redis:6379"
+    depends_on:
+      - redis
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - monitor-net
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitor-net
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - monitor-net
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - monitor-net
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_USER: limiter_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: rate_limiter
+    ports:
+      - "5432:5432"
+    networks:
+      - monitor-net
+
+networks:
+  monitor-net:
+    driver: bridge
+
+volumes:
+  grafana-storage:

@@ -3,15 +3,32 @@ package main
 import (
 	"context"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
 
 // Добавляем глобальную переменную для пула подключений к PostgreSQL
 var dbPool *pgxpool.Pool
+
+var (
+	requestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"path", "status"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(requestsTotal)
+}
 
 func connectPostgres(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, connString)
@@ -52,6 +69,7 @@ func main() {
 		c.JSON(200, gin.H{"message": "Rate Limiter is working!"})
 	})
 
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.Run(":8080")
 }
 
@@ -91,6 +109,9 @@ func RateLimiterMiddleware(redisClient *redis.Client, dbPool *pgxpool.Pool, limi
 			})
 			return
 		}
+
+		// В middleware увеличивайте счетчик:
+		requestsTotal.WithLabelValues(c.Request.URL.Path, strconv.Itoa(c.Writer.Status())).Inc()
 
 		c.Next()
 	}
