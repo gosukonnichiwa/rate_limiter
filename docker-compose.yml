@@ -1,4 +1,5 @@
-version: '3'
+version: '3.8'
+
 services:
   redis-exporter:
     image: oliver006/redis_exporter
@@ -6,8 +7,13 @@ services:
       - "9121:9121"
     command:
       - "--redis.addr=redis://redis:6379"
+    restart: unless-stopped
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    networks:
+      - monitor-net
+
   app:
     build: .
     ports:
@@ -40,6 +46,11 @@ services:
     image: redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - monitor-net
 
